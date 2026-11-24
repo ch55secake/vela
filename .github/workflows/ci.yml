@@ -16,8 +16,13 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
-      - name: build release
-        run: swift build --configuration release
+      - name: build app bundle
+        run: ./scripts/build.sh
+
+      - name: package app
+        env:
+          ARCH: arm64
+        run: ./scripts/package.sh
 
   test:
     name: test

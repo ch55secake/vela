@@ -21,9 +21,9 @@ Build the app bundle and launch it:
 open build/Vela.app
 ```
 
-Click the bell in the menu bar and choose **Connect to GitHub…**. Vela stores
-the token in the macOS Keychain. The first successful connection establishes a
-baseline, so existing notifications do not all fire as new alerts.
+Click the bell in the menu bar and choose **Connect to GitHub…**. Enter a
+classic personal access token with the `notifications` scope. Vela validates
+the token against GitHub and stores it in the macOS Keychain.
 
 To build and run the test suite without creating an app bundle:
 
@@ -38,9 +38,34 @@ notification data to any other service. The token is stored in the login
 Keychain and can be removed from the menu bar app with **Disconnect from
 GitHub**.
 
-Vela must be running to check for new notifications. The default polling
-interval is five minutes; **Check Now** triggers an immediate check. GitHub
-notifications are limited to repositories and threads visible to the token.
+Vela must be running to check for new notifications. It polls GitHub's
+`GET /notifications` endpoint every five minutes; **Check Now** triggers an
+immediate check. Requests use the response ETag, so unchanged inboxes return
+without downloading the notification list.
+
+On first connection, Vela establishes a baseline without alerting on existing
+items. Later new or updated unread threads produce a macOS notification, using
+the GitHub reason (for example, a review request or mention). Clicking an alert
+opens the related pull request or issue. macOS notification permission is
+requested on connection.
+
+This reflects GitHub's notifications inbox, limited to repositories and
+threads visible to the token. Vela does not scan every repository for pull
+requests or generate events GitHub hasn't put in the inbox.
+
+## Releases
+
+To make a release, update `CFBundleShortVersionString` in
+`Resources/Info.plist`, merge the change to `main`, then push the matching
+`vMAJOR.MINOR.PATCH` tag. GitHub Actions builds and publishes a zipped `.app`
+for Apple silicon and Intel, along with a SHA-256 checksum for each archive.
+
+Download `Vela-arm64.zip` for Apple silicon or `Vela-x86_64.zip` for Intel,
+verify it with its `.sha256` file if desired, unzip it, and move `Vela.app` to
+the Applications folder.
+
+Release apps are ad-hoc signed and are not notarized. macOS may require opening
+the app from **System Settings → Privacy & Security** on first launch.
 
 ## Development
 

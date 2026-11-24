@@ -15,8 +15,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var statusItem: NSStatusItem!
     private var notifications: [GitHubNotification] = []
     private var etag: String?
-    private var knownUpdates: [String: String]
-    private var hasKnownUpdateBaseline: Bool
+    private var notificationTracker: NotificationTracker
     private var isConnected = false
     private var isRefreshing = false
     private var lastError: String?
@@ -26,8 +25,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let storedUpdates = defaults.dictionary(
             forKey: Self.knownUpdatesKey
         ) as? [String: String]
-        knownUpdates = storedUpdates ?? [:]
-        hasKnownUpdateBaseline = storedUpdates != nil
+        notificationTracker = NotificationTracker(knownUpdates: storedUpdates)
         super.init()
     }
 
@@ -119,22 +117,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         _ latest: [GitHubNotification],
         notifyNew: Bool
     ) {
-        let currentUpdates = Dictionary(
-            latest.map { ($0.id, $0.updatedAt) },
-            uniquingKeysWith: { first, _ in first }
+        let changedNotifications = notificationTracker.update(
+            with: latest,
+            notifyChanges: notifyNew
         )
-
-        if hasKnownUpdateBaseline && notifyNew {
-            for item in latest where item.unread {
-                if knownUpdates[item.id] != item.updatedAt {
-                    deliver(item)
-                }
-            }
-        }
-
-        knownUpdates = currentUpdates
-        hasKnownUpdateBaseline = true
-        defaults.set(currentUpdates, forKey: Self.knownUpdatesKey)
+        defaults.set(notificationTracker.knownUpdates, forKey: Self.knownUpdatesKey)
+        changedNotifications.forEach(deliver)
         notifications = latest
     }
 

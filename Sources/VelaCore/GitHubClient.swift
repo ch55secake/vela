@@ -11,21 +11,7 @@ public struct GitHubClient {
         token: String,
         etag: String? = nil
     ) async throws -> NotificationFetchResult {
-        var request = URLRequest(
-            url: URL(string: "https://api.github.com/notifications?per_page=100")!
-        )
-        request.httpMethod = "GET"
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        request.setValue(
-            "application/vnd.github+json",
-            forHTTPHeaderField: "Accept"
-        )
-        request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
-        request.setValue("Vela", forHTTPHeaderField: "User-Agent")
-        if let etag {
-            request.setValue(etag, forHTTPHeaderField: "If-None-Match")
-        }
-
+        let request = makeRequest(token: token, etag: etag)
         let (data, response) = try await session.data(for: request)
         guard let response = response as? HTTPURLResponse else {
             throw GitHubClientError.invalidResponse
@@ -51,6 +37,24 @@ public struct GitHubClient {
             from: data
         )
         return .updated(notifications, etag: response.value(forHTTPHeaderField: "ETag"))
+    }
+
+    func makeRequest(token: String, etag: String?) -> URLRequest {
+        var request = URLRequest(
+            url: URL(string: "https://api.github.com/notifications?per_page=100")!
+        )
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue(
+            "application/vnd.github+json",
+            forHTTPHeaderField: "Accept"
+        )
+        request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
+        request.setValue("Vela", forHTTPHeaderField: "User-Agent")
+        if let etag {
+            request.setValue(etag, forHTTPHeaderField: "If-None-Match")
+        }
+        return request
     }
 }
 
