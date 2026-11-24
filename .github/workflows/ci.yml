@@ -9,15 +9,22 @@ permissions:
   contents: read
 
 jobs:
-  test:
-    name: Build and test
+  build:
+    name: Build
     runs-on: macos-15
     steps:
       - name: Check out source
         uses: actions/checkout@v4
 
-      - name: Build
+      - name: Build release
         run: swift build --configuration release
+
+  test:
+    name: Test
+    runs-on: macos-15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
 
       - name: Test
         run: swift test
