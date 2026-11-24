@@ -10,6 +10,8 @@
     <string>com.cheesecake.vela</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>CFBundleName</key>
     <string>Vela</string>
     <key>CFBundlePackageType</key>
