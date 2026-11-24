@@ -10,21 +10,21 @@ permissions:
 
 jobs:
   build:
-    name: Build
+    name: build
     runs-on: macos-15
     steps:
       - name: Check out source
         uses: actions/checkout@v4
 
-      - name: Build release
+      - name: build release
         run: swift build --configuration release
 
   test:
-    name: Test
+    name: test
     runs-on: macos-15
     steps:
       - name: Check out source
         uses: actions/checkout@v4
 
-      - name: Test
+      - name: test
         run: swift test
