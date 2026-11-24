@@ -21,9 +21,9 @@ Build the app bundle and launch it:
 open build/Vela.app
 ```
 
-Click the bell in the menu bar and choose **Connect to GitHub…**. Enter a
-classic personal access token with the `notifications` scope. Vela validates
-the token against GitHub and stores it in the macOS Keychain.
+Click the bell in the menu bar and choose **Connect to GitHub…**. Paste or
+enter a classic personal access token with the `notifications` scope. Vela
+validates the token against GitHub and stores it in the macOS Keychain.
 
 To build and run the test suite without creating an app bundle:
 

@@ -11,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let client = GitHubClient()
     private let menu = NSMenu()
     private let defaults = UserDefaults.standard
+    private weak var tokenFieldForPaste: NSSecureTextField?
 
     private var statusItem: NSStatusItem!
     private var notifications: [GitHubNotification] = []
@@ -354,16 +355,47 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             frame: NSRect(x: 0, y: 0, width: 320, height: 24)
         )
         tokenField.placeholderString = "ghp_…"
-        alert.accessoryView = tokenField
-        alert.window.initialFirstResponder = tokenField
+        let accessoryView = NSView(
+            frame: NSRect(x: 0, y: 0, width: 400, height: 28)
+        )
+        accessoryView.addSubview(tokenField)
 
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        let pasteButton = NSButton(
+            title: "Paste",
+            target: self,
+            action: #selector(pasteToken(_:))
+        )
+        pasteButton.bezelStyle = .rounded
+        pasteButton.frame = NSRect(x: 328, y: 0, width: 72, height: 28)
+        accessoryView.addSubview(pasteButton)
+
+        alert.accessoryView = accessoryView
+        alert.window.initialFirstResponder = tokenField
+        tokenFieldForPaste = tokenField
+
+        let response = alert.runModal()
+        tokenFieldForPaste = nil
+        guard response == .alertFirstButtonReturn else { return }
         let token = tokenField.stringValue.trimmingCharacters(
             in: .whitespacesAndNewlines
         )
         guard !token.isEmpty else { return }
 
         Task { await connect(token: token) }
+    }
+
+    @objc private func pasteToken(_ sender: NSButton) {
+        guard
+            let tokenField = tokenFieldForPaste,
+            let clipboardText = NSPasteboard.general.string(forType: .string)
+        else {
+            return
+        }
+
+        tokenField.stringValue = clipboardText.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+        tokenField.window?.makeFirstResponder(tokenField)
     }
 
     @objc private func checkNow() {
