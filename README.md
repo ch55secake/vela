@@ -40,8 +40,9 @@ GitHub**.
 
 Vela must be running to check for new notifications. It polls GitHub's
 `GET /notifications` endpoint every five minutes; **Check Now** triggers an
-immediate check. Requests use the response ETag, so unchanged inboxes return
-without downloading the notification list.
+immediate check. Requests use GitHub's `Last-Modified` response header and
+honor `X-Poll-Interval`; unchanged inboxes return `304 Not Modified` without
+consuming the API's primary rate limit.
 
 On first connection, Vela establishes a baseline without alerting on existing
 items. Later new or updated unread threads produce a macOS notification, using

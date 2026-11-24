@@ -4,7 +4,7 @@ import VelaCore
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
-    private static let pollInterval: Duration = .seconds(5 * 60)
+    private static let defaultPollIntervalSeconds = 5 * 60
     private static let knownUpdatesKey = "known-notification-updates"
 
     private let tokenStore = GitHubTokenStore()
@@ -14,7 +14,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private var statusItem: NSStatusItem!
     private var notifications: [GitHubNotification] = []
-    private var etag: String?
+    private var lastModified: String?
+    private var serverPollInterval: Int?
     private var notificationTracker: NotificationTracker
     private var isConnected = false
     private var isRefreshing = false
@@ -71,8 +72,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
 
             while !Task.isCancelled {
+                let interval = max(
+                    Self.defaultPollIntervalSeconds,
+                    self?.serverPollInterval ?? 0
+                )
                 do {
-                    try await Task.sleep(for: Self.pollInterval)
+                    try await Task.sleep(for: .seconds(Int64(interval)))
                 } catch {
                     break
                 }
@@ -98,11 +103,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             rebuildMenu()
             defer { isRefreshing = false }
 
-            switch try await client.fetchNotifications(token: token, etag: etag) {
-            case .notModified:
+            switch try await client.fetchNotifications(
+                token: token,
+                lastModified: lastModified
+            ) {
+            case .notModified(let responseLastModified, let pollInterval):
+                absorbPollHeaders(
+                    lastModified: responseLastModified,
+                    pollInterval: pollInterval
+                )
                 lastError = nil
-            case .updated(let latest, let latestETag):
-                etag = latestETag ?? etag
+            case .updated(let latest, let responseLastModified, let pollInterval):
+                absorbPollHeaders(
+                    lastModified: responseLastModified,
+                    pollInterval: pollInterval
+                )
                 accept(latest, notifyNew: notifyNew)
                 lastError = nil
             }
@@ -111,6 +126,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         updateStatusIcon()
         rebuildMenu()
+    }
+
+    private func absorbPollHeaders(lastModified: String?, pollInterval: Int?) {
+        if let lastModified {
+            self.lastModified = lastModified
+        }
+        if let pollInterval, pollInterval > 0 {
+            serverPollInterval = pollInterval
+        }
     }
 
     private func accept(
@@ -139,10 +163,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             let response = try await client.fetchNotifications(token: token)
             try tokenStore.save(token)
             isConnected = true
-            etag = nil
+            lastModified = nil
+            serverPollInterval = nil
 
-            if case .updated(let latest, let latestETag) = response {
-                etag = latestETag
+            switch response {
+            case .notModified(let responseLastModified, let pollInterval):
+                absorbPollHeaders(
+                    lastModified: responseLastModified,
+                    pollInterval: pollInterval
+                )
+            case .updated(let latest, let responseLastModified, let pollInterval):
+                absorbPollHeaders(
+                    lastModified: responseLastModified,
+                    pollInterval: pollInterval
+                )
                 accept(latest, notifyNew: false)
             }
 
@@ -167,7 +201,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             pollingTask = nil
             isConnected = false
             notifications = []
-            etag = nil
+            lastModified = nil
+            serverPollInterval = nil
             lastError = nil
             updateStatusIcon()
             rebuildMenu()
